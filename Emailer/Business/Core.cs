@@ -51,8 +51,8 @@ namespace Emailer.Business
                 switch(emailMission.EmailMissionType)
                 {
                     case EmailType.Student:
-                        reader.Read();
-                        missionDetails.Add(new StudentEmailMessage(reader[0] as string, reader[1] as string));
+                        while(reader.Read())
+                            missionDetails.Add(new StudentEmailMessage(reader[0] as string, reader[1] as string));
                         break;
                     case EmailType.LocalAdmin:
                     case EmailType.TechAdmin:

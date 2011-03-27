@@ -158,7 +158,7 @@ namespace Emailer.Business
             switch(emailMission.UserType)
             {
                 case 0:
-                    return GetAdminRecipients(emailMission.MissionId,emailMission.EmailMissionType);
+                    return GetAdminRecipients(emailMission.MissionId);
                 case 1:
                     return GetStudentRecipients(emailMission.MissionId);
                 default:

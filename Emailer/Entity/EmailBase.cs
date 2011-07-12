@@ -16,12 +16,6 @@
         Custom = 133
     }
 
-    public enum EmailUserType
-    {
-        Student = 1,
-        Admin = 0
-    }
-
     public struct EmailMission
     {
         public int MissionId;

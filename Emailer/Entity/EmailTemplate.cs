@@ -39,6 +39,7 @@ namespace Emailer.Entity
             Subject = "Your Kaplan Nursing account details";
             From = "integrated.support@kaplan.com";
             Body =
+                "Dear Nursing Student:\r\n\r\nWe are delighted to be working with you and your nursing school faculty to provide Kaplan/LWW testing and remediation materials to reinforce your classwork.  Below you will find your online access to the materials.  Your faculty will instruct you as to which secured or integrated tests you are taking and when, and you will be able to access remediation materials and additional unsecured tests from home at your convenience. This remediation will help you solidify your nursing content foundation, especially in your weaker areas.\r\n\r\nJust click on the link below, or cut and paste it to your browser to log in with the user name and password provided.  We suggest you start by clicking on the icon, Watch Me First to get an audio overview of the materials and best use.\r\n\r\nWe wish you all the best and hope you will get in touch if you have any questions.\r\n\r\n" +
                 "Link:\r\n" + StudentAppLink + "\r\n\r\nUser Name: " + username + "      Password: " + password +
                 "\r\n\r\n\r\n\r\nBest wishes from your Service Team,\r\n\r\nintegrated.support@kaplan.com<mailto:integrated.support@kaplan.com>";
         }

@@ -63,8 +63,8 @@ namespace Emailer.Business
                         break;
                     case EmailType.Custom:
                         Dictionary<string, string> customStudentInfo = new Dictionary<string, string>();
-                        while (reader.Read())
-                            customStudentInfo.Add(reader[0].ToString(), reader[1].ToString());
+                        //while (reader.Read())
+                        //    customStudentInfo.Add(reader[0].ToString(), reader[1].ToString());
                         missionDetails.Add(new CustomEmailMessage(customStudentInfo, emailMission.EmailId));
                         break;
                     default:

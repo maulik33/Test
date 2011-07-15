@@ -52,7 +52,7 @@ namespace Emailer.Business
                 {
                     case EmailType.Student:
                         while(reader.Read())
-                            missionDetails.Add(new StudentEmailMessage(reader[0] as string, reader[1] as string));
+                            missionDetails.Add(new StudentEmailMessage(reader[0] as string, reader[1] as string, reader[2] as string));
                         break;
                     case EmailType.LocalAdmin:
                     case EmailType.TechAdmin:
@@ -62,27 +62,58 @@ namespace Emailer.Business
                         missionDetails.Add(new AdminEmailMessage(adminStudentInfo));
                         break;
                     case EmailType.Custom:
-                        Dictionary<string, string> customStudentInfo = new Dictionary<string, string>();
-                        //while (reader.Read())
-                        //    customStudentInfo.Add(reader[0].ToString(), reader[1].ToString());
-                        missionDetails.Add(new CustomEmailMessage(customStudentInfo, emailMission.EmailId));
+                        
+                        if(emailMission.UserType == 1)
+                        {
+                            while (reader.Read())
+                            {
+                               Dictionary<string, string> customStudentInfo = new Dictionary<string, string>();
+                               //customStudentInfo.Add(reader[0].ToString(), reader[1].ToString());
+                               missionDetails.Add(new CustomEmailMessage(customStudentInfo, emailMission.EmailId, reader[2] as string));
+                            }
+                        }
+                        else
+                        {
+                            Dictionary<string, string> customStudentInfo = new Dictionary<string, string>();
+                            //while (reader.Read())
+                            //   customStudentInfo.Add(reader[0].ToString(), reader[1].ToString());
+                            missionDetails.Add(new CustomEmailMessage(customStudentInfo, emailMission.EmailId));
+                        }
                         break;
                     default:
                         throw new ApplicationException("Invalid EmailType passed");
                 }
             }
 
-            // send the emails to the users
-            for(int i = 0; i < recipients.Length; i++)
+            if((emailMission.EmailMissionType == EmailType.Custom && emailMission.UserType == EmailUserType.Student.GetHashCode()) || (emailMission.EmailMissionType==EmailType.Student))
             {
+                //send email students
                 for (int j = 0; j < missionDetails.Count; j++)
                 {
-                    if (SendEmail(emailMission.EmailMissionType, missionDetails[j], recipients[i]))
-                        Logger.LogInfo(string.Format("Email message send successfully to {0}.", recipients[i]));
+                    if (SendEmail(emailMission.EmailMissionType, missionDetails[j], missionDetails[j].RecipientEmailId))
+                        Logger.LogInfo(string.Format("Email message send successfully to {0}.", missionDetails[j].RecipientEmailId));
                     else
-                        Logger.LogError(string.Format("Email message failed to send to {0}.", recipients[i]));
+                        Logger.LogError(string.Format("Email message failed to send to {0}.", missionDetails[j].RecipientEmailId));
                 }
             }
+            else
+            {
+                // send the emails to other users
+                for (int i = 0; i < recipients.Length; i++)
+                {
+                    for (int j = 0; j < missionDetails.Count; j++)
+                    {
+                        if (SendEmail(emailMission.EmailMissionType, missionDetails[j], recipients[i]))
+                            Logger.LogInfo(string.Format("Email message send successfully to {0}.", recipients[i]));
+                        else
+                            Logger.LogError(string.Format("Email message failed to send to {0}.", recipients[i]));
+                    }
+                }
+                
+           }
+
+
+            
 
             UpdateEmailStatus(emailMission.MissionId, 4);
             Logger.LogInfo(string.Format("Email mission {0} completed.", emailMission.MissionId));

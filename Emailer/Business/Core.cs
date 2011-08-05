@@ -158,6 +158,14 @@ namespace Emailer.Business
             , IList<EmailRecipient> recipients, Dictionary<string, bool> status)
         {
             StringBuilder confirmationEmailText = new StringBuilder();
+            var statusBreakup = from s in status
+                                group s by s.Value into g
+                                select new { StatusText = g.Key, Count = g.Count() };
+            confirmationEmailText.AppendLine("Status");
+            foreach (var item in statusBreakup)
+            {
+                confirmationEmailText.AppendLine(string.Format("{0} : {1}", item.StatusText, item.Count));
+            }
             confirmationEmailText.AppendLine("This Email has been sent to: " + GetSenderText(emailMission, missionDetails, recipients));
             string subject = "";
 

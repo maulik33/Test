@@ -161,11 +161,28 @@ namespace Emailer.Business
             var statusBreakup = from s in status
                                 group s by s.Value into g
                                 select new { StatusText = g.Key, Count = g.Count() };
-            confirmationEmailText.AppendLine("Status");
-            foreach (var item in statusBreakup)
+            confirmationEmailText.Append("Status : ");
+            var successStatusRow = statusBreakup.Where(p => p.StatusText == true).FirstOrDefault();
+            int success = 0;
+            int failure = 0;
+            if (successStatusRow != null)
             {
-                confirmationEmailText.AppendLine(string.Format("{0} : {1}", item.StatusText, item.Count));
+                confirmationEmailText.Append(string.Format("{0} : {1}", "Successful", successStatusRow.Count));
+                success = successStatusRow.Count;
             }
+
+            var failureStatusRow = statusBreakup.Where(p => p.StatusText == false).FirstOrDefault();
+            if (failureStatusRow != null)
+            {
+                confirmationEmailText.Append(string.Format("{0} : {1}", ", Failure", failureStatusRow.Count));
+                failure += failureStatusRow.Count;
+            }
+
+            if (failure > 0)
+            {
+                confirmationEmailText.Append(string.Format("{0} : {1}", ", Total", success + failure));
+            }
+
             confirmationEmailText.AppendLine("This Email has been sent to: " + GetSenderText(emailMission, missionDetails, recipients));
             string subject = "";
 
@@ -235,7 +252,7 @@ namespace Emailer.Business
                 {
                     case EmailSelectionLevel.StudentUser:
                     case EmailSelectionLevel.AdminUser:
-                        senderText.AppendLine(EmailUtilities.ToAcronymProper(emailMission.EmailMissionType.ToString()));
+                        senderText.AppendLine(EmailUtilities.ToAcronymProper(emailMission.EmailMissionType.ToString()) + "s");
                         break;
                     default:
                         senderText.AppendLine(string.Format("All {0} in {1}"

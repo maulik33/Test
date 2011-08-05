@@ -33,6 +33,17 @@ namespace Emailer.Entity
         }
     }
 
+    public class ConfirmationEmailMessage : EmailMessage
+    {
+        public ConfirmationEmailMessage(string subject, string to, string body)
+        {
+            Subject = subject;
+            From = "integrated.support@kaplan.com";
+            Body = body;
+            To = to;
+        }
+    }
+
     public class StudentEmailMessage : EmailMessage
     {
         public StudentEmailMessage(string username, string password, string emailid)

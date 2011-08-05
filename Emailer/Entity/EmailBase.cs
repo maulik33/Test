@@ -22,18 +22,30 @@
         Admin = 0
     }
 
+    public enum EmailSelectionLevel
+    {
+        Institution = 1,
+        Cohort = 2,
+        Group = 3,
+        StudentUser = 4,
+        AdminUser = 5,
+        Unknown = 100
+    }
+
     public struct EmailMission
     {
         public int MissionId;
         public EmailType EmailMissionType;
         public int EmailId;
         public int UserType;
+        public string CreatorEmail;
 
-        public EmailMission(int missionId, int emailId, int userType)
+        public EmailMission(int missionId, int emailId, int userType, string creatorEmail)
         {
             MissionId = missionId;
             EmailId = emailId;
             UserType = userType;
+            CreatorEmail = creatorEmail;
 
             // set email type based on emailId
             if (emailId > 0)

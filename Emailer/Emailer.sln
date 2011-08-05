@@ -6,6 +6,14 @@ EndProject
 Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "Rn Emailer Setup", "..\Rn Emailer Setup\Rn Emailer Setup.vdproj", "{9EE094EA-2B83-449E-8B0A-8B00A3717C66}"
 EndProject
 Global
+	GlobalSection(SourceCodeControl) = preSolution
+		SccNumberOfProjects = 3
+		SccLocalPath0 = .
+		SccProjectUniqueName1 = Emailer.csproj
+		SccLocalPath1 = .
+		SccProjectUniqueName2 = ..\\Rn\u0020Emailer\u0020Setup\\Rn\u0020Emailer\u0020Setup.vdproj
+		SccLocalPath2 = ..\\Rn\u0020Emailer\u0020Setup
+	EndGlobalSection
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU

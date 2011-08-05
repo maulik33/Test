@@ -5,12 +5,33 @@ using System.Data.SqlClient;
 using System.Net.Mail;
 using Emailer.Entity;
 using Emailer.Utilities;
+using System.Text;
+using System.Linq;
+using System.IO;
 
 namespace Emailer.Business
 {
     public static class Core
     {
         public static bool SendEmail(EmailType mailType, EmailMessage mailMessage, string recipient)
+        {
+            SmtpClient emailClient = new SmtpClient(EmailSender.ServerName);
+            try
+            {
+                mailMessage.To = recipient;
+                //emailClient.Send(mailMessage.GetMailMessage());
+                Logger.LogInfo("Message sent successfully.");
+            }
+            catch (SmtpException smtpException)
+            {
+                Logger.LogError("SendEmail Error", smtpException);
+                Logger.LogDebug(smtpException.StackTrace);
+                return false;
+            }
+            return true;
+        }
+
+        public static bool SendEmail(EmailMessage mailMessage, string recipient)
         {
             SmtpClient emailClient = new SmtpClient(EmailSender.ServerName);
             try
@@ -31,7 +52,7 @@ namespace Emailer.Business
         public static EmailMissionState SendEmail(EmailMission emailMission)
         {
             // get email recipients
-            string[] recipients = GetEmailRecipients(emailMission);
+            IList<EmailRecipient> recipients = GetEmailRecipients(emailMission);
 
             // get mission details
             List<EmailMessage> missionDetails = new List<EmailMessage>();
@@ -48,28 +69,28 @@ namespace Emailer.Business
                 if (reader == null)
                     return EmailMissionState.NothingToSend;
 
-                switch(emailMission.EmailMissionType)
+                switch (emailMission.EmailMissionType)
                 {
                     case EmailType.Student:
-                        while(reader.Read())
+                        while (reader.Read())
                             missionDetails.Add(new StudentEmailMessage(reader[0] as string, reader[1] as string, reader[2] as string));
                         break;
                     case EmailType.LocalAdmin:
                     case EmailType.TechAdmin:
                         Dictionary<string, string> adminStudentInfo = new Dictionary<string, string>();
-                        while(reader.Read())
+                        while (reader.Read())
                             adminStudentInfo.Add(reader[0].ToString(), reader[1].ToString());
                         missionDetails.Add(new AdminEmailMessage(adminStudentInfo));
                         break;
                     case EmailType.Custom:
-                        
-                        if(emailMission.UserType == 1)
+
+                        if (emailMission.UserType == 1)
                         {
                             while (reader.Read())
                             {
-                               Dictionary<string, string> customStudentInfo = new Dictionary<string, string>();
-                               //customStudentInfo.Add(reader[0].ToString(), reader[1].ToString());
-                               missionDetails.Add(new CustomEmailMessage(customStudentInfo, emailMission.EmailId, reader[2] as string));
+                                Dictionary<string, string> customStudentInfo = new Dictionary<string, string>();
+                                //customStudentInfo.Add(reader[0].ToString(), reader[1].ToString());
+                                missionDetails.Add(new CustomEmailMessage(customStudentInfo, emailMission.EmailId, reader[2] as string));
                             }
                         }
                         else
@@ -85,39 +106,155 @@ namespace Emailer.Business
                 }
             }
 
-            if((emailMission.EmailMissionType == EmailType.Custom && emailMission.UserType == EmailUserType.Student.GetHashCode()) || (emailMission.EmailMissionType==EmailType.Student))
+            Dictionary<string, bool> status = new Dictionary<string, bool>();
+
+            if ((emailMission.EmailMissionType == EmailType.Custom && emailMission.UserType == (int)EmailUserType.Student) || emailMission.EmailMissionType == EmailType.Student)
             {
                 //send email students
                 for (int j = 0; j < missionDetails.Count; j++)
                 {
-                    if (SendEmail(emailMission.EmailMissionType, missionDetails[j], missionDetails[j].RecipientEmailId))
-                        Logger.LogInfo(string.Format("Email message send successfully to {0}.", missionDetails[j].RecipientEmailId));
+                    bool isSendSuccessful = SendEmail(emailMission.EmailMissionType, missionDetails[j], missionDetails[j].RecipientEmailId);
+                    if (isSendSuccessful)
+                    {
+                        Logger.LogInfo(string.Format("Email message sent successfully to {0}.", missionDetails[j].RecipientEmailId));
+                    }
                     else
+                    {
                         Logger.LogError(string.Format("Email message failed to send to {0}.", missionDetails[j].RecipientEmailId));
+                    }
+                    status.Add(string.Format("0.{0}", j), isSendSuccessful);
                 }
             }
             else
             {
                 // send the emails to other users
-                for (int i = 0; i < recipients.Length; i++)
+                for (int i = 0; i < recipients.Count; i++)
                 {
-                    for (int j = 0; j < missionDetails.Count; j++)
+                    for (int j = 0; j < missionDetails.Count; j++) // Gokul: wont the count be always 1 here?
                     {
-                        if (SendEmail(emailMission.EmailMissionType, missionDetails[j], recipients[i]))
+                        bool isSendSuccessful = SendEmail(emailMission.EmailMissionType, missionDetails[j], recipients[i].EmailId);
+                        if (isSendSuccessful)
+                        {
                             Logger.LogInfo(string.Format("Email message send successfully to {0}.", recipients[i]));
+                        }
                         else
+                        {
                             Logger.LogError(string.Format("Email message failed to send to {0}.", recipients[i]));
+                        }
+                        status.Add(string.Format("{1}.{0}", j, i), isSendSuccessful);
                     }
                 }
-                
-           }
-
-
-            
+            }
 
             UpdateEmailStatus(emailMission.MissionId, 4);
+
+            SendConfirmationEmail(emailMission, missionDetails, recipients, status);
+
             Logger.LogInfo(string.Format("Email mission {0} completed.", emailMission.MissionId));
             return EmailMissionState.SendSuccess;
+        }
+
+        private static void SendConfirmationEmail(EmailMission emailMission, List<EmailMessage> missionDetails
+            , IList<EmailRecipient> recipients, Dictionary<string, bool> status)
+        {
+            StringBuilder confirmationEmailText = new StringBuilder();
+            confirmationEmailText.AppendLine("This Email has been sent to: " + GetSenderText(emailMission, missionDetails, recipients));
+            string subject = "";
+
+            EmailMessage firstEmail = missionDetails.FirstOrDefault();
+            if (firstEmail != null)
+            {
+                subject = firstEmail.Subject;
+            }
+
+            foreach (var email in missionDetails)
+            {
+                confirmationEmailText.AppendLine(string.Format("To : {0}", email.To));
+                confirmationEmailText.AppendLine(string.Format("Status : {0}", GetStatusText(emailMission
+                    , email, status, missionDetails.IndexOf(email), recipients)));
+                confirmationEmailText.AppendLine(email.Body);
+                confirmationEmailText.AppendLine(GetSeperatorLine());
+            }
+
+            EmailMessage confirmationEmail = new ConfirmationEmailMessage(string.Format("Nursing(RN): Confirmation Email #{0} [{1}]"
+                , emailMission.MissionId, subject)
+                , emailMission.CreatorEmail, confirmationEmailText.ToString());
+            SendEmail(confirmationEmail, emailMission.CreatorEmail);
+
+            string filename = Path.Combine(@"D:\Temp\Temporary\SendConfirmation2", String.Format("{0}.txt", emailMission.MissionId));
+
+            using (StreamWriter sw = new StreamWriter(filename))
+            {
+                sw.WriteLine(confirmationEmailText.ToString());
+            }
+        }
+
+        private static string GetStatusText(EmailMission mission, EmailMessage email, Dictionary<string, bool> status, int index, IList<EmailRecipient> recipients)
+        {
+            string key = "";
+            string emailStatus = "Send Failed";
+            if ((mission.EmailMissionType == EmailType.Custom && mission.UserType == (int)EmailUserType.Student) || mission.EmailMissionType == EmailType.Student)
+            {
+                key = string.Format("0.{0}", index);
+            }
+            else
+            {
+                EmailRecipient recipient = recipients.Where(p => p.EmailId == email.To).FirstOrDefault();
+                if (recipient != null)
+                {
+                    key = string.Format("{1}.{0}", index, recipients.IndexOf(recipient));
+                }
+            }
+
+            if (status.ContainsKey(key)
+                && status[key] == true)
+            {
+                emailStatus = "Sent Successfully";
+            }
+
+            return emailStatus;
+        }
+
+        private static string GetSenderText(EmailMission emailMission, List<EmailMessage> missionDetails, IList<EmailRecipient> recipients)
+        {
+            StringBuilder senderText = new StringBuilder();
+            try
+            {
+                EmailSelectionLevel selectionLevel = recipients.FirstOrDefault().Type;
+                string selectionLevelText = EmailUtilities.ToAcronymProper(selectionLevel.ToString());
+
+                switch (selectionLevel)
+                {
+                    case EmailSelectionLevel.StudentUser:
+                    case EmailSelectionLevel.AdminUser:
+                        senderText.AppendLine(EmailUtilities.ToAcronymProper(emailMission.EmailMissionType.ToString()));
+                        break;
+                    default:
+                        senderText.AppendLine(string.Format("All {0} in {1}"
+                            , EmailUtilities.ToAcronymProper(emailMission.EmailMissionType.ToString())
+                            , selectionLevelText));
+                        break;
+                }
+
+                foreach (var recipient in recipients.GroupBy(p => p.Name))
+                {
+                    senderText.AppendLine(recipient.Key);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogInfo(ex.Message);
+                senderText.AppendLine("Error occurred when constructing Recipient list");
+            }
+
+            senderText.AppendLine(GetSeperatorLine());
+
+            return senderText.ToString();
+        }
+
+        public static string GetSeperatorLine()
+        {
+            return "".PadRight(150, '-');
         }
 
         public static void UpdateEmailStatus(int emailId, int emailStatus)
@@ -145,17 +282,17 @@ namespace Emailer.Business
                 if (reader == null)
                     return null;
 
-                while(reader.Read())
+                while (reader.Read())
                 {
-                    missions.Add(new EmailMission((int)reader[0], (int)reader[1], (int)reader[2]));
+                    missions.Add(new EmailMission((int)reader[0], (int)reader[1], (int)reader[2], reader["CreatorEmail"].ToString()));
                 }
                 return missions.ToArray();
             }
         }
 
-        public static string[] GetEmailRecipients(EmailMission emailMission)
+        public static IList<EmailRecipient> GetEmailRecipients(EmailMission emailMission)
         {
-            switch(emailMission.UserType)
+            switch (emailMission.UserType)
             {
                 case 0:
                     return GetAdminRecipients(emailMission.MissionId);
@@ -166,33 +303,19 @@ namespace Emailer.Business
             }
         }
 
-        private static string[] GetStudentRecipients(int missionId)
+        private static IList<EmailRecipient> GetStudentRecipients(int missionId)
         {
-            List<string> recipients = new List<string>();
-
-            #region Sql Parameters
-            SqlParameter[] sqlParameters = new SqlParameter[1];
-            SqlParameter parameterMissionId = new SqlParameter("@emailMissionId", SqlDbType.Int, 4);
-            parameterMissionId.Value = missionId;
-            sqlParameters[0] = parameterMissionId;
-            #endregion
-
-            using (IDataReader reader = DAO.Core.GetDataReader("uspGetStudentMissionRecipients", sqlParameters))
-            {
-                if (reader == null)
-                    return null;
-
-                while (reader.Read())
-                {
-                    recipients.Add(reader[0].ToString());
-                }
-                return recipients.ToArray();
-            }
+            return GetRecipients(missionId, "uspGetStudentMissionRecipients");
         }
 
-        private static string[] GetAdminRecipients(int missionId)
+        private static IList<EmailRecipient> GetAdminRecipients(int missionId)
         {
-            List<string> recipients = new List<string>();
+            return GetRecipients(missionId, "uspGetAdminMissionRecipients");
+        }
+
+        private static IList<EmailRecipient> GetRecipients(int missionId, string spName)
+        {
+            List<EmailRecipient> recipients = new List<EmailRecipient>();
 
             #region Sql Parameters
             SqlParameter[] sqlParameters = new SqlParameter[1];
@@ -201,17 +324,22 @@ namespace Emailer.Business
             sqlParameters[0] = parameterMissionId;
             #endregion
 
-            using (IDataReader reader = DAO.Core.GetDataReader("uspGetAdminMissionRecipients", sqlParameters))
+            using (IDataReader reader = DAO.Core.GetDataReader(spName, sqlParameters))
             {
                 if (reader == null)
                     return null;
 
                 while (reader.Read())
                 {
-                    recipients.Add(reader[0].ToString());
+                    recipients.Add(new EmailRecipient()
+                    {
+                        EmailId = (reader["Email"] as string) ?? "",
+                        Name = (reader["Name"] as string) ?? "",
+                        Type = (EmailSelectionLevel)Enum.Parse(typeof(EmailSelectionLevel), reader["SelectionLevel"].ToString() ?? "100")
+                    });
                 }
-                return recipients.ToArray();
             }
+            return recipients;
         }
 
         public static string[] GetCustomEmailDefinition(int emailId)
@@ -223,13 +351,13 @@ namespace Emailer.Business
             sqlParameters[0] = parameterEmailId;
             #endregion
 
-            using(IDataReader reader = DAO.Core.GetDataReader("uspGetCustomEmailDefinition", sqlParameters))
+            using (IDataReader reader = DAO.Core.GetDataReader("uspGetCustomEmailDefinition", sqlParameters))
             {
-                if(reader == null)
+                if (reader == null)
                     return null;
 
                 reader.Read();
-                return new[]{reader[0].ToString(), reader[1].ToString()};
+                return new[] { reader[0].ToString(), reader[1].ToString() };
             }
         }
     }

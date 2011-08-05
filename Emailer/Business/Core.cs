@@ -248,10 +248,10 @@ namespace Emailer.Business
                 {
                     case EmailSelectionLevel.StudentUser:
                     case EmailSelectionLevel.AdminUser:
-                        senderText.AppendLine(EmailUtilities.ToAcronymProper(emailMission.EmailMissionType.ToString()) + "s");
+                        senderText.AppendLine(EmailUtilities.ToAcronymProper(emailMission.EmailMissionType.ToString()) + "(s)");
                         break;
                     default:
-                        senderText.AppendLine(string.Format("All {0} in {1}"
+                        senderText.AppendLine(string.Format("All {0}s in following {1}(s)"
                             , EmailUtilities.ToAcronymProper(emailMission.EmailMissionType.ToString())
                             , selectionLevelText));
                         break;

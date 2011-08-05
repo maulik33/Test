@@ -48,10 +48,10 @@ namespace Emailer
         [DllImport("advapi32.dll", SetLastError = true)]
         public static extern int SetServiceStatus(IntPtr hServiceStatus, ref ServiceStatus lpServiceStatus);
 
-        //public static void Main()
-        //{
-        //    Run(new EmailService());
-        //}
+        public static void Main()
+        {
+            Run(new EmailService());
+        }
 
         public EmailService()
         {

@@ -8,7 +8,7 @@ namespace Emailer
 {
     class program
     {
-        public static void Main(string[] args)
+        public static void VoidMain(string[] args)
         {
             int i = 0;
             do

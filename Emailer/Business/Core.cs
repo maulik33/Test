@@ -19,7 +19,7 @@ namespace Emailer.Business
             try
             {
                 mailMessage.To = recipient;
-                //emailClient.Send(mailMessage.GetMailMessage());
+                emailClient.Send(mailMessage.GetMailMessage());
                 Logger.LogInfo("Message sent successfully.");
             }
             catch (SmtpException smtpException)
@@ -201,13 +201,6 @@ namespace Emailer.Business
                 , emailMission.MissionId, subject)
                 , emailMission.CreatorEmail, confirmationEmailText.ToString());
             SendEmail(confirmationEmail, emailMission.CreatorEmail);
-
-            string filename = Path.Combine(@"D:\Temp\Temporary\SendConfirmation2", String.Format("{0}.txt", emailMission.MissionId));
-
-            using (StreamWriter sw = new StreamWriter(filename))
-            {
-                sw.WriteLine(confirmationEmailText.ToString());
-            }
         }
 
         private static string GetStatusText(EmailMission mission, EmailMessage email, Dictionary<string, bool> status, int index, IList<EmailRecipient> recipients)

@@ -167,21 +167,17 @@ namespace Emailer.Business
             int failure = 0;
             if (successStatusRow != null)
             {
-                confirmationEmailText.Append(string.Format("{0} : {1}", "Successful", successStatusRow.Count));
                 success = successStatusRow.Count;
             }
 
             var failureStatusRow = statusBreakup.Where(p => p.StatusText == false).FirstOrDefault();
             if (failureStatusRow != null)
             {
-                confirmationEmailText.Append(string.Format("{0} : {1}", ", Failure", failureStatusRow.Count));
                 failure += failureStatusRow.Count;
             }
 
-            if (failure > 0)
-            {
-                confirmationEmailText.Append(string.Format("{0} : {1}", ", Total", success + failure));
-            }
+            confirmationEmailText.AppendLine(string.Format("Total : {0}, Failed : {1}", success + failure, failure));
+            confirmationEmailText.AppendLine(GetSeperatorLine());
 
             confirmationEmailText.AppendLine("This Email has been sent to: " + GetSenderText(emailMission, missionDetails, recipients));
             string subject = "";

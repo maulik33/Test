@@ -5,11 +5,11 @@ namespace Emailer.Utilities
 {
     public static class ConfigMgr
     {
-        public static string GetConfigValue(string index)
+        public static string GetConfigValue(string key)
         {
             try
             {
-                return ConfigurationManager.AppSettings[index];
+                return ConfigurationManager.AppSettings[key];
             }
             catch (Exception ex)
             {
@@ -19,11 +19,11 @@ namespace Emailer.Utilities
             return null;
         }
 
-        public static string GetConnectionStringValue(string index)
+        public static string GetConnectionStringValue(string key)
         {
             try
             {
-                return ConfigurationManager.ConnectionStrings[index].ToString();
+                return ConfigurationManager.ConnectionStrings[key].ToString();
             }
             catch (Exception ex)
             {

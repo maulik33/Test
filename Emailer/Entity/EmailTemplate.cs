@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Net.Mail;
 using Emailer.Utilities;
+using System.IO;
 
 namespace Emailer.Entity
 {
@@ -11,14 +12,17 @@ namespace Emailer.Entity
         public string To { get; set; }
         public string Body { get; set; }
         public string RecipientEmailId { get; set; }
+        public int MissionId { get; private set; }
+        public bool IsConfirmationEmail { get; protected set; }
 
         protected string StudentAppLink;
         protected string AdminAppLink;
 
-        protected EmailMessage()
+        protected EmailMessage(int missionId)
         {
             StudentAppLink = ConfigMgr.GetConfigValue("studentAppLink");
             AdminAppLink = ConfigMgr.GetConfigValue("adminAppLink");
+            MissionId = missionId;
 
             if (string.IsNullOrEmpty(StudentAppLink) || string.IsNullOrEmpty(AdminAppLink))
             {
@@ -31,22 +35,31 @@ namespace Emailer.Entity
         {
             return new MailMessage(From, To, Subject, Body);
         }
+
+        public string GetFileName()
+        {
+            return Path.Combine(ConfigMgr.GetConfigValue("TempDir"),
+                string.Format("{0}{1}.txt", IsConfirmationEmail ? "Con" : "", MissionId));
+        }
     }
 
     public class ConfirmationEmailMessage : EmailMessage
     {
-        public ConfirmationEmailMessage(string subject, string to, string body)
+        public ConfirmationEmailMessage(string subject, string to, string body, int missionId)
+            : base(missionId)
         {
             Subject = subject;
             From = "integrated.support@kaplan.com";
             Body = body;
             To = to;
+            IsConfirmationEmail = true;
         }
     }
 
     public class StudentEmailMessage : EmailMessage
     {
-        public StudentEmailMessage(string username, string password, string emailid)
+        public StudentEmailMessage(string username, string password, string emailid, int missionId)
+            : base(missionId)
         {
             Subject = "Your Kaplan Nursing account details";
             From = "integrated.support@kaplan.com";
@@ -60,7 +73,8 @@ namespace Emailer.Entity
 
     public class AdminEmailMessage : EmailMessage
     {
-        public AdminEmailMessage(Dictionary<string, string> users)
+        public AdminEmailMessage(Dictionary<string, string> users, int missionId)
+            : base(missionId)
         {
             Subject = "Kaplan Nursing students account info list";
             From = "integrated.support@kaplan.com";
@@ -78,7 +92,8 @@ namespace Emailer.Entity
 
     public class CustomEmailMessage : EmailMessage
     {
-        public CustomEmailMessage(Dictionary<string, string> users, int emailId)
+        public CustomEmailMessage(Dictionary<string, string> users, int emailId, int missionId)
+            : base(missionId)
         {
             string[] customEmailData = Business.Core.GetCustomEmailDefinition(emailId);
 
@@ -92,7 +107,8 @@ namespace Emailer.Entity
             }
         }
 
-        public CustomEmailMessage(Dictionary<string, string> users, int emailId, string recipientEmailId)
+        public CustomEmailMessage(Dictionary<string, string> users, int emailId, string recipientEmailId, int missionId)
+            : base(missionId)
         {
             string[] customEmailData = Business.Core.GetCustomEmailDefinition(emailId);
 

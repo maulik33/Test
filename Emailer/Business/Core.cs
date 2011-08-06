@@ -8,6 +8,7 @@ using Emailer.Utilities;
 using System.Text;
 using System.Linq;
 using System.IO;
+using System.Diagnostics;
 
 namespace Emailer.Business
 {
@@ -15,20 +16,7 @@ namespace Emailer.Business
     {
         public static bool SendEmail(EmailType mailType, EmailMessage mailMessage, string recipient)
         {
-            SmtpClient emailClient = new SmtpClient(EmailSender.ServerName);
-            try
-            {
-                mailMessage.To = recipient;
-                emailClient.Send(mailMessage.GetMailMessage());
-                Logger.LogInfo("Message sent successfully.");
-            }
-            catch (SmtpException smtpException)
-            {
-                Logger.LogError("SendEmail Error", smtpException);
-                Logger.LogDebug(smtpException.StackTrace);
-                return false;
-            }
-            return true;
+            return SendEmail(mailMessage, recipient);
         }
 
         public static bool SendEmail(EmailMessage mailMessage, string recipient)
@@ -37,7 +25,17 @@ namespace Emailer.Business
             try
             {
                 mailMessage.To = recipient;
+#if DEBUG
+                using (StreamWriter sw = new StreamWriter(mailMessage.GetFileName(), true))
+                {
+                    Debug.WriteLine(string.Format("Writing File : {0}", mailMessage.GetFileName()));
+                    sw.WriteLine(mailMessage.Subject);
+                    sw.WriteLine("To : " + mailMessage.To);
+                    sw.WriteLine(mailMessage.Body);
+                }
+#else
                 emailClient.Send(mailMessage.GetMailMessage());
+#endif
                 Logger.LogInfo("Message sent successfully.");
             }
             catch (SmtpException smtpException)
@@ -73,14 +71,14 @@ namespace Emailer.Business
                 {
                     case EmailType.Student:
                         while (reader.Read())
-                            missionDetails.Add(new StudentEmailMessage(reader[0] as string, reader[1] as string, reader[2] as string));
+                            missionDetails.Add(new StudentEmailMessage(reader[0] as string, reader[1] as string, reader[2] as string, emailMission.MissionId));
                         break;
                     case EmailType.LocalAdmin:
                     case EmailType.TechAdmin:
                         Dictionary<string, string> adminStudentInfo = new Dictionary<string, string>();
                         while (reader.Read())
                             adminStudentInfo.Add(reader[0].ToString(), reader[1].ToString());
-                        missionDetails.Add(new AdminEmailMessage(adminStudentInfo));
+                        missionDetails.Add(new AdminEmailMessage(adminStudentInfo, emailMission.MissionId));
                         break;
                     case EmailType.Custom:
 
@@ -90,7 +88,7 @@ namespace Emailer.Business
                             {
                                 Dictionary<string, string> customStudentInfo = new Dictionary<string, string>();
                                 //customStudentInfo.Add(reader[0].ToString(), reader[1].ToString());
-                                missionDetails.Add(new CustomEmailMessage(customStudentInfo, emailMission.EmailId, reader[2] as string));
+                                missionDetails.Add(new CustomEmailMessage(customStudentInfo, emailMission.EmailId, reader[2] as string, emailMission.MissionId));
                             }
                         }
                         else
@@ -98,7 +96,7 @@ namespace Emailer.Business
                             Dictionary<string, string> customStudentInfo = new Dictionary<string, string>();
                             //while (reader.Read())
                             //   customStudentInfo.Add(reader[0].ToString(), reader[1].ToString());
-                            missionDetails.Add(new CustomEmailMessage(customStudentInfo, emailMission.EmailId));
+                            missionDetails.Add(new CustomEmailMessage(customStudentInfo, emailMission.EmailId, emailMission.MissionId));
                         }
                         break;
                     default:
@@ -148,7 +146,10 @@ namespace Emailer.Business
 
             UpdateEmailStatus(emailMission.MissionId, 4);
 
-            SendConfirmationEmail(emailMission, missionDetails, recipients, status);
+            if (missionDetails.Count > 0)
+            {
+                SendConfirmationEmail(emailMission, missionDetails, recipients, status);
+            }
 
             Logger.LogInfo(string.Format("Email mission {0} completed.", emailMission.MissionId));
             return EmailMissionState.SendSuccess;
@@ -199,7 +200,8 @@ namespace Emailer.Business
 
             EmailMessage confirmationEmail = new ConfirmationEmailMessage(string.Format("Nursing(RN): Confirmation Email #{0} [{1}]"
                 , emailMission.MissionId, subject)
-                , emailMission.CreatorEmail, confirmationEmailText.ToString());
+                , emailMission.CreatorEmail, confirmationEmailText.ToString(), emailMission.MissionId);
+
             SendEmail(confirmationEmail, emailMission.CreatorEmail);
         }
 
@@ -237,17 +239,16 @@ namespace Emailer.Business
                 EmailSelectionLevel selectionLevel = recipients.FirstOrDefault().Type;
                 string selectionLevelText = EmailUtilities.ToAcronymProper(selectionLevel.ToString());
 
-                switch (selectionLevel)
+                if (selectionLevel == EmailSelectionLevel.StudentUser
+                    || selectionLevel == EmailSelectionLevel.AdminUser)
                 {
-                    case EmailSelectionLevel.StudentUser:
-                    case EmailSelectionLevel.AdminUser:
-                        senderText.AppendLine(EmailUtilities.ToAcronymProper(emailMission.EmailMissionType.ToString()) + "(s)");
-                        break;
-                    default:
-                        senderText.AppendLine(string.Format("All {0}s in following {1}(s)"
-                            , EmailUtilities.ToAcronymProper(emailMission.EmailMissionType.ToString())
-                            , selectionLevelText));
-                        break;
+                    senderText.AppendLine(GetEmailTypeText(emailMission, false));
+                }
+                else
+                {
+                    senderText.AppendLine(string.Format("All {0} in following {1}(s)"
+                        , GetEmailTypeText(emailMission, true)
+                        , selectionLevelText));
                 }
 
                 foreach (var recipient in recipients.GroupBy(p => p.Name))
@@ -266,9 +267,18 @@ namespace Emailer.Business
             return senderText.ToString();
         }
 
-        public static string GetSeperatorLine()
+        private static string GetSeperatorLine()
         {
             return "".PadRight(150, '-');
+        }
+
+        private static string GetEmailTypeText(EmailMission emailMission, bool pluralize)
+        {
+            string suffix = pluralize ? "s" : "(s)";
+
+            return (emailMission.EmailMissionType == EmailType.Custom)
+                ? ((EmailUserType)Enum.Parse(typeof(EmailUserType), emailMission.UserType.ToString())).ToString() + suffix
+                : EmailUtilities.ToAcronymProper(emailMission.EmailMissionType.ToString()) + suffix;
         }
 
         public static void UpdateEmailStatus(int emailId, int emailStatus)

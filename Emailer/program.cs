@@ -3,42 +3,34 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Emailer.Entity;
+using System.Diagnostics;
 
 namespace Emailer
 {
     class program
     {
-        public static void VoidMain(string[] args)
+#if DEBUG
+        public static void Main(string[] args)
         {
-            int i = 0;
-            do
+            try
             {
-                Console.WriteLine(string.Format("************* Executing ({0}) *************", ++i));
-                try
-                {
-                    exec();
-                }
-                catch (Exception ex)
-                {
-                    Console.Beep();
-                    ConsoleColor fr = Console.ForegroundColor;
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine(ex.Message);
-                    Console.ForegroundColor = fr;
-                }
-                Console.WriteLine("Execution completed. Press 'r' to re-execute.");
-            } while (Console.ReadKey(true).KeyChar == 'r');
+                exec();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine("Error Occurred : " + ex.Message);
+            }
+            Debug.WriteLine("Email Engine completed its execution.");
         }
-
+#endif
         private static void exec()
         {
-            EmailMission[] result = Business.Core.GetQueuedMissions().Take(10).ToArray();
+            //EmailMission[] result = Business.Core.GetQueuedMissions().Skip(20).Take(20).ToArray();
+            EmailMission[] result = Business.Core.GetQueuedMissions();
             foreach (var email in result)
             {
                 Business.Core.SendEmail(email);
             }
-
-
         }
     }
 }

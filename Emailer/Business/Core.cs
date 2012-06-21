@@ -202,7 +202,16 @@ namespace Emailer.Business
                 , emailMission.MissionId, subject)
                 , emailMission.CreatorEmail, confirmationEmailText.ToString(), emailMission.MissionId);
 
-            SendEmail(confirmationEmail, emailMission.CreatorEmail);
+            string regRecipients = ConfigMgr.GetConfigValue("confirmationMailId");
+            StringBuilder confirmationRecipients = new StringBuilder();
+            if (!String.IsNullOrEmpty(regRecipients))
+            {
+                confirmationRecipients.Append(regRecipients);
+                confirmationRecipients.Append(",");
+            }
+
+            confirmationRecipients.Append(emailMission.CreatorEmail);
+            SendEmail(confirmationEmail, confirmationRecipients.ToString());
         }
 
         private static string GetStatusText(EmailMission mission, EmailMessage email, Dictionary<string, bool> status, int index, IList<EmailRecipient> recipients)

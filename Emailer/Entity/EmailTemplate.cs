@@ -14,7 +14,7 @@ namespace Emailer.Entity
         public string RecipientEmailId { get; set; }
         public int MissionId { get; private set; }
         public bool IsConfirmationEmail { get; protected set; }
-
+        public MailMessage EmailMessageContent = null;
         protected string StudentAppLink;
         protected string AdminAppLink;
 
@@ -29,11 +29,16 @@ namespace Emailer.Entity
                 Logger.LogError("Student application link configuration value missing!");
                 Logger.LogDebug("EmailMessage constructor");
             }
+            EmailMessageContent = new MailMessage();
         }
 
         public MailMessage GetMailMessage()
         {
-            return new MailMessage(From, To, Subject, Body);
+            EmailMessageContent.From = new MailAddress(From);
+            EmailMessageContent.To.Add(new MailAddress(To));
+            EmailMessageContent.Subject = Subject;
+            EmailMessageContent.Body = Body;
+            return EmailMessageContent;
         }
 
         public string GetFileName()

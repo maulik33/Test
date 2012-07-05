@@ -31,6 +31,7 @@ namespace Emailer.Business
                     Debug.WriteLine(string.Format("Writing File : {0}", mailMessage.GetFileName()));
                     sw.WriteLine(mailMessage.Subject);
                     sw.WriteLine("To : " + mailMessage.To);
+                    sw.WriteLine("CC :" + mailMessage.EmailMessageContent.CC);
                     sw.WriteLine(mailMessage.Body);
                 }
 #else
@@ -202,14 +203,17 @@ namespace Emailer.Business
                 , emailMission.MissionId, subject)
                 , emailMission.CreatorEmail, confirmationEmailText.ToString(), emailMission.MissionId);
 
-            string regRecipients = ConfigMgr.GetConfigValue("confirmationMailId");
+            
             StringBuilder confirmationRecipients = new StringBuilder();
-            if (!String.IsNullOrEmpty(regRecipients))
-            {
-                confirmationRecipients.Append(regRecipients);
-                confirmationRecipients.Append(",");
-            }
 
+            string regRecipients = ConfigMgr.GetConfigValue("confirmationMailId");
+
+            //if (!String.IsNullOrEmpty(regRecipients))
+            //{
+            //    confirmationRecipients.Append(regRecipients);
+            //    confirmationRecipients.Append(",");
+            //}
+            confirmationEmail.EmailMessageContent.CC.Add(regRecipients);
             confirmationRecipients.Append(emailMission.CreatorEmail);
             SendEmail(confirmationEmail, confirmationRecipients.ToString());
         }

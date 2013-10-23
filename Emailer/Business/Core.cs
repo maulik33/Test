@@ -199,7 +199,7 @@ namespace Emailer.Business
                 confirmationEmailText.AppendLine(GetSeperatorLine());
             }
 
-            EmailMessage confirmationEmail = new ConfirmationEmailMessage(string.Format("Nursing(RN): Confirmation Email #{0} [{1}]"
+            EmailMessage confirmationEmail = new ConfirmationEmailMessage(string.Format("Nursing: Confirmation Email #{0} [{1}]"
                 , emailMission.MissionId, subject)
                 , emailMission.CreatorEmail, confirmationEmailText.ToString(), emailMission.MissionId);
 
